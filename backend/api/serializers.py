@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404
+from django.db import transaction
 from drf_extra_fields.fields import Base64ImageField
 from recipes.models import (Favourite, Ingredient, IngredientInRecipe, Recipe,
                             ShoppingCart, Tag)
@@ -29,8 +30,12 @@ class IngredientsRecipeSerializer(serializers.ModelSerializer):
     """Сериализатор ингридиентов в рецепте"""
     id = serializers.IntegerField()
     amount = serializers.IntegerField(required=True)
-    name = serializers.SerializerMethodField()
-    measurement_unit = serializers.SerializerMethodField()
+    name = serializers.ReadOnlyField(
+        source="ingredient.name"
+        )
+    measurement_unit = serializers.ReadOnlyField(
+        source='ingredient.measurement_unit'
+        )
 
     class Meta:
         model = IngredientInRecipe
@@ -40,14 +45,6 @@ class IngredientsRecipeSerializer(serializers.ModelSerializer):
             'measurement_unit',
             "amount",
         )
-
-    def get_measurement_unit(self, ingredient):
-        measurement_unit = ingredient.ingredient.measurement_unit
-        return measurement_unit
-
-    def get_name(self, ingredient):
-        name = ingredient.ingredient.name
-        return name
 
 
 class RecipesReadSerializer(serializers.ModelSerializer):
@@ -76,20 +73,11 @@ class RecipesReadSerializer(serializers.ModelSerializer):
     def get_user(self):
         return self.context["request"].user
 
-    def get_is_favorited(self, obj):
-        """Проверяет находится ли рецепт в избранном."""
-        request = self.context.get('request')
-        if request.user.is_anonymous:
-            return False
-        return Favourite.objects.filter(recipe=obj, user=request.user).exists()
+    def get_is_subscribed(self, obj):
+        return obj.id in self.context['subscriptions']
 
     def get_is_in_shopping_cart(self, obj):
-        """Проверяет находится ли рецепт в продуктовой корзине."""
-        request = self.context.get('request')
-        if request.user.is_anonymous:
-            return False
-        return ShoppingCart.objects.filter(recipe=obj,
-                                           user=request.user).exists()
+        return obj.id in self.context['shopping_cart']
 
 
 class RecipesCreateSerializer(serializers.ModelSerializer):
@@ -125,6 +113,7 @@ class RecipesCreateSerializer(serializers.ModelSerializer):
             )
             recipe.ingredients.add(ing.id)
 
+    @transaction.atomic
     def create(self, validated_data):
         """Создание рецепта."""
         tags = validated_data.pop("tags")
@@ -135,6 +124,7 @@ class RecipesCreateSerializer(serializers.ModelSerializer):
         self.create_amount_ingredients(ingredients, recipe)
         return recipe
 
+    @transaction.atomic
     def update(self, recipe, validated_data):
         """Обновление рецепта."""
         if "ingredients" in validated_data:
@@ -151,68 +141,63 @@ class RecipesCreateSerializer(serializers.ModelSerializer):
         return serializer.data
 
 
+class ShortRecipe(serializers.ModelSerializer):
+    """Поля ."""
+    class Meta:
+        fields = (
+            'id',
+            'name',
+            'image',
+            'cooking_time'
+        )
+        model = Recipe
+
+
 class FavouriteSerializer(serializers.ModelSerializer):
     """Сериализатор избранных рецептов"""
-    id = serializers.CharField(
-        read_only=True,
-        source="recipe.id",
-    )
-    cooking_time = serializers.CharField(
-        read_only=True,
-        source="recipe.cooking_time",
-    )
-    image = serializers.CharField(
-        read_only=True,
-        source="recipe.image",
-    )
-    name = serializers.CharField(
-        read_only=True,
-        source="recipe.name",
-    )
+    class Meta:
+        fields = ('user', 'recipe')
+        model = Favourite
 
     def validate(self, data):
-        """Валидатор избранных рецептов"""
-        recipe = data["recipe"]
-        user = data["user"]
-        if user == recipe.author:
+        request = self.context['request']
+        if not request or request.user.is_anonymous:
+            return False
+        if Favourite.objects.filter(
+            user=request.user, recipe=data.get('recipe')
+        ).exists():
             raise serializers.ValidationError(
-                "Вы не можете добавить свои рецепты в избранное"
+                {'Favorite_exists_error': 'Рецепт уже в избранном.'}
             )
-        if Favourite.objects.filter(recipe=recipe, user=user).exists():
-            raise serializers.ValidationError(
-                "Вы уже добавили рецепт в избранное")
         return data
 
-    def create(self, validated_data):
-        """Метод создания избранного"""
-        favorite = Favourite.objects.create(**validated_data)
-        favorite.save()
-        return favorite
-
-    class Meta:
-        model = Favourite
-        fields = ("id", "name", "image", "cooking_time")
+    def to_representation(self, instance):
+        return ShortRecipe(
+            instance.recipe,
+            context={'request': self.context['request']}
+        ).data
 
 
 class ShoppingCartSerializer(serializers.ModelSerializer):
     """Сериализатор продуктовой корзины."""
-    id = serializers.CharField(
-        read_only=True,
-        source="recipe.id",
-    )
-    cooking_time = serializers.CharField(
-        read_only=True,
-        source="recipe.cooking_time",
-    )
-    image = serializers.CharField(
-        read_only=True,
-        source="recipe.image",
-    )
-    name = serializers.CharField(
-        read_only=True,
-        source="recipe.name",
-    )
-
     class Meta:
         model = ShoppingCart
-        fields = ("id", "name", "image", "cooking_time")
+        fields = ('user', 'recipe')
+
+    def validate(self, data):
+        request = self.context['request']
+        if not request or request.user.is_anonymous:
+            return False
+        if ShoppingCart.objects.filter(
+            user=request.user, recipe=data.get('recipe')
+        ).exists():
+            raise serializers.ValidationError(
+                {'Shoppingсart_exists_error': 'Рецепт уже находится в корзине'}
+            )
+        return data
+
+    def to_representation(self, instance):
+        return ShortRecipe(
+            instance.recipe,
+            context={'request': self.context['request']}
+        ).data

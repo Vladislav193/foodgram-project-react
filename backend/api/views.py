@@ -10,12 +10,13 @@ from rest_framework.response import Response
 
 from recipes.models import (Favourite, Ingredient, Recipe,
                             IngredientInRecipe, ShoppingCart, Tag)
+from users.models import Follow
 from .filters import IngredientFilter, RecipeFilter
 from .pagination import LimitPageNumberPagination
 from .permissions import IsAuthorOrReadOnly
 from .serializers import (IngredientSerializer, RecipesReadSerializer,
                           RecipesCreateSerializer, FavouriteSerializer,
-                          TagSerializer)
+                          TagSerializer, ShoppingCartSerializer)
 
 
 class IngredientsViewSet(viewsets.ModelViewSet):
@@ -37,11 +38,23 @@ class TagsViewSet(viewsets.ModelViewSet):
 
 class RecipesViewSet(viewsets.ModelViewSet):
     """Вьюсет для модели рецепта."""
-    queryset = Recipe.objects.all().order_by("-id")
+    queryset = Recipe.objects.all()
     filter_backends = (DjangoFilterBackend, filters.SearchFilter)
     filterset_class = RecipeFilter
     permission_classes = (IsAuthorOrReadOnly,)
     pagination_class = LimitPageNumberPagination
+
+    def get_serializer_context(self):
+        """Дополнительный контекст, предоставляемый классу serializer."""
+        subscription = set(
+            Favourite.objects.filter(user_id=self.request.user).values_list('recipe_id', flat=True))
+        shopping_cart = set(
+            ShoppingCart.objects.filter(user_id=self.request.user).values_list('recipe_id', flat=True))
+        data = {
+            'subscriptions': subscription,
+            'shopping_cart': shopping_cart
+             }
+        return data
 
     def get_serializer_class(self):
         if self.request.method in SAFE_METHODS:
@@ -51,39 +64,33 @@ class RecipesViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
 
-    def create(self, model, user, pk):
-        """Метод для добавления рецепта."""
-        if model.objects.filter(user=user, recipe__id=pk).exists():
-            return Response({
-                'errors': 'Рецепт уже добавлен в список!'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        recipe = get_object_or_404(Recipe, id=pk)
-        model.objects.create(user=user, recipe=recipe)
-        serializer = FavouriteSerializer(recipe)
+    def add(self, request, pk, model, modelserializer):
+        # надеюсь я правильно понял твои рекомендации)))
+        if request.method != 'POST':
+            action_model = get_object_or_404(
+                model,
+                user=request.user,
+                recipe=get_object_or_404(Recipe, pk=pk)
+            )
+            self.perform_destroy(action_model)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        serializer = modelserializer(
+            data={
+                'user': request.user.id,
+                'recipe': get_object_or_404(Recipe, pk=pk).pk
+            },
+            context={'request': request}
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    def delete_recipe(self, model, user, pk):
-        """Метод для удаления рецепта."""
-        obj = model.objects.filter(user=user, recipe__id=pk)
-        if obj.exists():
-            obj.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        return Response({
-            'errors': 'Рецепт уже удален'
-        }, status=status.HTTP_400_BAD_REQUEST)
-
-    @action(
-        detail=True,
-        methods=["POST", "DELETE"],
-        url_path="favorite",
-        permission_classes=(IsAuthenticated,)
-    )
-    def favorite(self, request, pk=None):
-        """Метод для добавления/удаления из избранного."""
-        if request.method == 'POST':
-            return self.create(Favourite, request.user, pk)
-        else:
-            return self.delete_recipe(Favourite, request.user, pk)
+    @action(methods=["POST", "DELETE"],
+            detail=True,
+            permission_classes=[IsAuthenticated]
+            )
+    def favorite(self, request, pk):
+        return self.add(request, pk, Favourite, FavouriteSerializer)
 
     @action(
         detail=True,
@@ -93,10 +100,7 @@ class RecipesViewSet(viewsets.ModelViewSet):
     )
     def shopping_cart(self, request, pk=None):
         """Метод для добавления/удаления из продуктовой корзины."""
-        if request.method == 'POST':
-            return self.create(ShoppingCart, request.user, pk)
-        else:
-            return self.delete_recipe(ShoppingCart, request.user, pk)
+        return self.add(request, pk, ShoppingCart, ShoppingCartSerializer)
 
     @action(
         detail=False,
