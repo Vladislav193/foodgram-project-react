@@ -16,7 +16,7 @@ jobs:
     - name: Install dependencies
       run: | 
         python -m pip install --upgrade pip 
-        pip install -r backend/requirements.txt   
+        pip install -r backend/requirements.txt
   build_and_push_to_docker_hub:
       name: Push Docker image to Docker Hub
       runs-on: ubuntu-latest
@@ -38,14 +38,14 @@ jobs:
           uses: docker/build-push-action@v2
           with:
             push: true
-            tags: ${{ secrets.DOCKER_USERNAME }}/backend
+            tags: ${{ secrets.DOCKER_USERNAME }}/backend:v1
             file: backend/Dockerfile
 
         - name: Push frontend image to Docker Hub
           uses: docker/build-push-action@v2
           with:
             push: true
-            tags: ${{ secrets.DOCKER_USERNAME }}/frontend
+            tags: ${{ secrets.DOCKER_USERNAME }}/frontend:v1
             file: frontend/Dockerfile
 
   deploy:
