@@ -60,6 +60,8 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           passphrase: ${{ secrets.PASSPHRASE }}
           script: |
+            sudo docker pull vladislav193/backend:v1
+            sudo docker pull vladislav193/frontend:v1
             sudo docker-compose stop
             touch .env
             echo DB_ENGINE=${{ secrets.DB_ENGINE }} >> .env
