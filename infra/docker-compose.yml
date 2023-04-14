@@ -10,12 +10,12 @@ services:
       - ./.env
 
   frontend:
-    image: vladislav193/frontend
+    image: vladislav193/frontend:v1
     volumes:
       - ../frontend/:/app/result_build/
 
   backend:
-    image: vladislav193/backend
+    image: vladislav193/backend:v1
     restart: always
 
     volumes:
