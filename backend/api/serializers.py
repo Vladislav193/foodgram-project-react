@@ -1,10 +1,6 @@
 from django.shortcuts import get_object_or_404
 from django.db import transaction
 from drf_extra_fields.fields import Base64ImageField
-<<<<<<< HEAD
-from recipes.models import (Favourite, Ingredient, IngredientInRecipe, Recipe,
-                            ShoppingCart, Tag)
-=======
 from rest_framework import status
 from recipes.models import (
     Favourite,
@@ -15,17 +11,12 @@ from recipes.models import (
     Tag,
 )
 from users.models import User
->>>>>>> 63237f0dcb846cedcb36f9f4dd8ce49573833824
 from rest_framework import serializers
 from users.models import Follow, User
 
 
 class CustomUserSerializer(serializers.ModelSerializer):
     """Сериализатор модели пользователя."""
-<<<<<<< HEAD
-=======
-
->>>>>>> 63237f0dcb846cedcb36f9f4dd8ce49573833824
     is_subscribed = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
@@ -49,10 +40,6 @@ class CustomUserSerializer(serializers.ModelSerializer):
 
 class FollowSerializer(serializers.ModelSerializer):
     """Сериализатор подписок."""
-<<<<<<< HEAD
-=======
-
->>>>>>> 63237f0dcb846cedcb36f9f4dd8ce49573833824
     email = serializers.ReadOnlyField(source="author.email")
     id = serializers.ReadOnlyField(source="author.id")
     username = serializers.ReadOnlyField(source="author.username")
@@ -63,11 +50,7 @@ class FollowSerializer(serializers.ModelSerializer):
     recipes_count = serializers.SerializerMethodField()
 
     class Meta:
-<<<<<<< HEAD
-        model = Follow
-=======
         model = User
->>>>>>> 63237f0dcb846cedcb36f9f4dd8ce49573833824
         fields = (
             "email",
             "id",
@@ -79,15 +62,6 @@ class FollowSerializer(serializers.ModelSerializer):
             "recipes_count",
         )
 
-<<<<<<< HEAD
-    def get_is_subscribed(self, obj):
-        return Follow.objects.filter(user=obj.user, author=obj.author).exists()
-
-
-    def get_recipes(self, obj):
-        queryset = (
-            Recipe.objects.filter(author=obj.author).order_by("-pub_date"))
-=======
     def validate(self, data):
         author = self.instance
         user = self.context.get("request").user
@@ -112,7 +86,6 @@ class FollowSerializer(serializers.ModelSerializer):
     def get_recipes(self, obj):
         queryset = Recipe.objects.filter(
             author=obj.author).order_by("-pub_date")
->>>>>>> 63237f0dcb846cedcb36f9f4dd8ce49573833824
         return ShortRecipeSerializer(queryset, many=True).data
 
     def get_recipes_count(self, obj):
@@ -121,10 +94,6 @@ class FollowSerializer(serializers.ModelSerializer):
 
 class ShortRecipeSerializer(serializers.ModelSerializer):
     """Сериализатор списка рецептов."""
-<<<<<<< HEAD
-=======
-
->>>>>>> 63237f0dcb846cedcb36f9f4dd8ce49573833824
     image = Base64ImageField()
 
     class Meta:
@@ -136,10 +105,6 @@ class ShortRecipeSerializer(serializers.ModelSerializer):
             "cooking_time",
         )
 
-<<<<<<< HEAD
-=======
-
->>>>>>> 63237f0dcb846cedcb36f9f4dd8ce49573833824
 class TagSerializer(serializers.ModelSerializer):
     """Сериализатор модели тегов."""
 
@@ -209,11 +174,7 @@ class RecipesReadSerializer(serializers.ModelSerializer):
         return self.context["request"].user
 
     def get_is_favorited(self, obj):
-<<<<<<< HEAD
-        return obj.id in self.context['subscriptions']
-=======
         return obj.id in self.context["subscriptions"]
->>>>>>> 63237f0dcb846cedcb36f9f4dd8ce49573833824
 
     def get_is_in_shopping_cart(self, obj):
         return obj.id in self.context["shopping_cart"]

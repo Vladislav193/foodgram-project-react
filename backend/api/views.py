@@ -9,10 +9,6 @@ from rest_framework.decorators import action
 from rest_framework.permissions import SAFE_METHODS, IsAuthenticated
 from rest_framework.response import Response
 
-<<<<<<< HEAD
-from recipes.models import (Favourite, Ingredient, Recipe,
-                            IngredientInRecipe, ShoppingCart, Tag)
-=======
 from recipes.models import (
     Favourite,
     Ingredient,
@@ -21,16 +17,10 @@ from recipes.models import (
     ShoppingCart,
     Tag,
 )
->>>>>>> 63237f0dcb846cedcb36f9f4dd8ce49573833824
 from users.models import Follow, User
 from .filters import IngredientFilter, RecipeFilter
 from .pagination import LimitPageNumberPagination
 from .permissions import IsAuthorOrReadOnly
-<<<<<<< HEAD
-from .serializers import (CustomUserSerializer, FollowSerializer, IngredientSerializer, RecipesReadSerializer,
-                          RecipesCreateSerializer, FavouriteSerializer,
-                          TagSerializer, ShoppingCartSerializer)
-=======
 from .serializers import (
     IngredientSerializer,
     RecipesReadSerializer,
@@ -41,32 +31,11 @@ from .serializers import (
     CustomUserSerializer,
     FollowSerializer,
 )
->>>>>>> 63237f0dcb846cedcb36f9f4dd8ce49573833824
 from djoser.views import UserViewSet
 
 
 class UserViewSet(UserViewSet):
     """Вьюсет для модели пользователя."""
-<<<<<<< HEAD
-    queryset = User.objects.all()
-    serializer_class = CustomUserSerializer
- 
-    def get_serializer_context(self):
-        """Дополнительный контекст, предоставляемый классу serializer."""
-        follow = set(
-            Follow.objects.filter(user_id=self.request.user.id).values_list('author_id', flat=True))
-        data = {
-            'follow': follow,
-             }
-        return data
-
-    @action(
-        methods=["GET"],
-        detail=False,
-        permission_classes=(IsAuthenticated,)
-    )
-
-=======
 
     queryset = User.objects.all()
     serializer_class = CustomUserSerializer
@@ -86,19 +55,13 @@ class UserViewSet(UserViewSet):
     @action(methods=["GET"],
             detail=False,
             permission_classes=[IsAuthenticated])
->>>>>>> 63237f0dcb846cedcb36f9f4dd8ce49573833824
     def subscriptions(self, request):
         """Метод для просмотра подписок на авторов."""
         user = self.request.user
         queryset = Follow.objects.filter(user=user)
         pages = self.paginate_queryset(queryset)
         serializer = FollowSerializer(
-<<<<<<< HEAD
-            pages, many=True, context={"request": request}
-        )
-=======
             pages, many=True, context={"request": request})
->>>>>>> 63237f0dcb846cedcb36f9f4dd8ce49573833824
         return self.get_paginated_response(serializer.data)
 
     @action(
@@ -106,19 +69,6 @@ class UserViewSet(UserViewSet):
         methods=["POST", "DELETE"],
         permission_classes=[IsAuthenticated]
     )
-<<<<<<< HEAD
-
-    def subscribe(self, request, **kwargs):
-        user = request.user
-        author_id = self.kwargs.get('id')
-        author = get_object_or_404(User, id=author_id)
- 
-        if request.method == 'POST':
-            serializer = FollowSerializer(
-                author,
-                data=request.data,
-                context={"request": request}
-=======
     def subscribe(self, request, **kwargs):
         user = request.user
         author_id = self.kwargs.get("id")
@@ -127,24 +77,13 @@ class UserViewSet(UserViewSet):
         if request.method == "POST":
             serializer = FavouriteSerializer(
                 author, data=request.data, context={"request": request}
->>>>>>> 63237f0dcb846cedcb36f9f4dd8ce49573833824
             )
             serializer.is_valid(raise_exception=True)
             Follow.objects.create(user=user, author=author)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
-<<<<<<< HEAD
- 
-        if request.method == 'DELETE':
-            subscription = get_object_or_404(
-                Follow,
-                user=user,
-                author=author
-            )
-=======
 
         if request.method == "DELETE":
             subscription = get_object_or_404(Follow, user=user, author=author)
->>>>>>> 63237f0dcb846cedcb36f9f4dd8ce49573833824
             subscription.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
 
