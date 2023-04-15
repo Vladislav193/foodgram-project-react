@@ -34,3 +34,4 @@ Cайт Foodgram «Продуктовый помощник». На этом се
 -Скопируйте файлы docker-compose.yaml и nginx/default.conf из вашего проекта на сервер в home/<ваш_username>/docker-compose.yaml и home/<ваш_username>/nginx/default.conf соответственно.
 
 -После Deploy автоматический пройдут все миграции и подгрузится статика. Сайтом можно пользоваться.
+
