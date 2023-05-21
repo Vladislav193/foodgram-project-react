@@ -38,5 +38,4 @@ Cайт Foodgram «Продуктовый помощник». На этом се
 - Сайт http://178.154.205.172/
 
 - Админка http://178.154.205.172/admin
-email: admin@gmail.com
-pass: rekth193
+
